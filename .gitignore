@@ -1,0 +1,13 @@
+# Dépendances Node
+/node_modules
+
+# Fichiers de configuration locaux (SECRETS)
+.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# IDE (Optional)
+.vscode .idea ```
