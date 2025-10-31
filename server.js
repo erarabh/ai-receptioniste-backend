@@ -11,42 +11,40 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
 const app = express();
-const PORT = process.env.PORT |
+const PORT = process.env.PORT || 3000;
 
-| 3000;
 
 // ======
 // CONFIGURATION
 // ========
 
 const pool = new Pool({
-    host: process.env.DB_HOST |
+  host: process.env.DB_HOST || 'localhost',
 
-| 'localhost',
-    port: process.env.DB_PORT |
+			  
+  port: process.env.DB_PORT || 5432,
 
-| 5432,
-    database: process.env.DB_NAME |
+	   
+  database: process.env.DB_NAME || 'ai_receptionist',
 
-| 'ai_receptionist',
-    user: process.env.DB_USER |
+					
+  user: process.env.DB_USER || 'postgres',
 
-| 'postgres',
-    password: process.env.DB_PASSWORD |
+			 
+  password: process.env.DB_PASSWORD || 'password',
 
-| 'password',
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+			 
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
-const JWT_SECRET = process.env.JWT_SECRET |
+										   
 
-| 'your-secret-key-change-in-production';
-// Clé pour l'analyse NLP avancée (Zero-Shot)
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY |
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+											   
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || "";
 
-| ""; 
 
 // =====
 // MIDDLEWARE
@@ -88,22 +86,14 @@ const analyzelntent = async (message) => {
     const lowerMessage = message.toLowerCase();
     
     // Détection simple basée sur des mots-clés
-    if (lowerMessage.includes('rendez-vous') |
-
-| lowerMessage.includes('rdv') ||
-        lowerMessage.includes('consultation') |
-
-| lowerMessage.includes('voir')) {
+    if (lowerMessage.includes('rendez-vous') || lowerMessage.includes('rdv') ||
+        lowerMessage.includes('consultation') || lowerMessage.includes('voir')) {
         return { intent: 'schedule_appointment', confidence: 0.9 };
     }
-    if (lowerMessage.includes('annuler') |
-
-| lowerMessage.includes('reporter')) {
+    if (lowerMessage.includes('annuler') || lowerMessage.includes('reporter')) {
         return { intent: 'cancel_appointment', confidence: 0.85 };
     }
-    if (lowerMessage.includes('horaire') |
-
-| lowerMessage.includes('ouvert') ||
+    if (lowerMessage.includes('horaire') || lowerMessage.includes('ouvert') ||
         lowerMessage.includes('disponible')) {
         return { intent: 'check_availability', confidence: 0.8 };
     }
@@ -161,9 +151,7 @@ const generateAIResponse = async (message, conversationState) => {
         get_reason: "Merci. Y a-t-il des informations supplémentaires que le médecin devrait connaître?",
         confirmation: "Parfait! Je prépare votre récapitulatif de rendez-vous..."
     };
-    return responses |
-
-| "Comment puis-je vous aider?";
+    return responses || "Comment puis-je vous aider?";
 };
 
 
@@ -271,12 +259,10 @@ app.get('/api/appointments', authenticateToken, async (req, res) => {
         // Si doctorId est fourni, l'utiliser. Sinon, utiliser l'ID de l'utilisateur authentifié.
         // NOTE: Un contrôle d'autorisation RBAC strict devrait être ajouté ici pour vérifier
         // que req.user.id == doctorId, sauf si req.user.role == 'admin'.
-        const targetDoctorId = doctorId |
-
-| req.user.id; 
+        const targetDoctorId = doctorId || req.user.id; 
 
         let query = 'SELECT * FROM v_appointments_full WHERE 1=1';
-        const params =;
+        const params = [];
         let paramCount = 1;
 
         if (status) {
@@ -346,18 +332,20 @@ app.post('/api/appointments', async (req, res) => {
         );
 
         // 3. Mettre à jour la conversation AI (optionnel, selon le schéma complet)
-        if (conversationId) {
-            await pool.query(
-                `UPDATE ai_conversations SET appointment_created = true, appointment_id = $1 
-                WHERE id = $2`,
-               .id, conversationId]
-            );
-        }
+if (conversationId) {
+  await pool.query(
+    `UPDATE ai_conversations 
+     SET appointment_created = true, appointment_id = $1 
+     WHERE id = $2`,
+    [appointmentResult.rows[0].id, conversationId] // ✅ correction ici
+  );
+}
 
-        res.status(201).json({
-            success: true,
-            appointment: appointmentResult.rows
-        });
+res.status(201).json({
+  success: true,
+  appointment: appointmentResult.rows
+});
+
 
     } catch (error) {
         console.error('Erreur création rendez-vous:', error);
@@ -497,9 +485,7 @@ app.get('/api/statistics/dashboard', authenticateToken, async (req, res) => {
     try {
         const { doctorId } = req.query;
         // Utiliser l'ID du docteur fourni ou celui de l'utilisateur authentifié
-        const targetDoctorId = doctorId |
-
-| req.user.id; 
+        const targetDoctorId = doctorId || req.user.id; 
 
         // Rendez-vous aujourd'hui
         const todayStats = await pool.query(
@@ -550,33 +536,19 @@ app.get('/api/statistics/dashboard', authenticateToken, async (req, res) => {
            
         );
         
-        const totalConversations = parseInt(aiStats.rows.total_conversations |
-
-| 0);
-        const successfulConversations = parseInt(aiStats.rows.successful |
-
-| 0);
+        const totalConversations = parseInt(aiStats.rows.total_conversations || 0);
+        const successfulConversations = parseInt(aiStats.rows.successful || 0);
 
         res.json({
-            today: parseInt(todayStats.rows.count |
-
-| 0),
-            pending: parseInt(pendingStats.rows.count |
-
-| 0),
-            completed: parseInt(completedStats.rows.count |
-
-| 0),
-            cancellationRate: parseFloat(cancellationRate.rows.rate |
-
-| 0).toFixed(2),
+            today: parseInt(todayStats.rows.count || 0),
+            pending: parseInt(pendingStats.rows.count || 0),
+            completed: parseInt(completedStats.rows.count || 0),
+            cancellationRate: parseFloat(cancellationRate.rows.rate || 0).toFixed(2),
             aiConversations: totalConversations,
             aiSuccessRate: totalConversations > 0
                ? ((successfulConversations / totalConversations) * 100).toFixed(2)
                 : 0,
-            aiCompletedAppointments: parseInt(aiStats.rows.completed_appointments_from_ai |
-
-| 0)
+            aiCompletedAppointments: parseInt(aiStats.rows.completed_appointments_from_ai || 0)
         });
 
     } catch (error) {
@@ -584,7 +556,6 @@ app.get('/api/statistics/dashboard', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
-
 
 // ==================
 // ROUTES - DISPONIBILITÉS
@@ -597,38 +568,38 @@ app.get('/api/availability/slots', async (req, res) => {
         if (!date) {
             return res.status(400).json({ error: 'Date requise' });
         }
-        
-        const targetDoctorId = doctorId |
 
-| 1; 
-        const dayOfWeek = new Date(date).getDay();
+        // Si aucun doctorId fourni, on prend un ID par défaut (ex : 1)
+        const targetDoctorId = doctorId || 1;
+        const dayOfWeek = new Date(date).getDay(); // 0 = Dimanche, 6 = Samedi
 
-        // 1. Récupérer les disponibilités du jour
+        // 1️⃣ Récupérer les disponibilités du jour
         const availability = await pool.query(
             `SELECT * FROM doctor_availability
-            WHERE doctor_id = $1 AND day_of_week = $2 AND is_available = true`,
-           
+             WHERE doctor_id = $1 AND day_of_week = $2 AND is_available = true`,
+            [targetDoctorId, dayOfWeek]
         );
 
         if (availability.rows.length === 0) {
-            return res.json({ slots: });
+            return res.json({ slots: [] });
         }
 
-        // 2. Récupérer les rendez-vous existants (excluant annulés/no_show)
+        // 2️⃣ Récupérer les rendez-vous existants (excluant annulés / no_show)
         const existingAppointments = await pool.query(
             `SELECT appointment_time FROM appointments
-            WHERE doctor_id = $1 AND appointment_date = $2
-            AND status NOT IN ('cancelled', 'no_show')`,
-           
+             WHERE doctor_id = $1 AND appointment_date = $2
+             AND status NOT IN ('cancelled', 'no_show')`,
+            [targetDoctorId, date]
         );
         const bookedTimes = new Set(existingAppointments.rows.map(r => r.appointment_time));
 
-        // 3. Générer les créneaux disponibles
-        const slots =;
+        // 3️⃣ Générer les créneaux disponibles
+        const slots = [];
+
         for (const period of availability.rows) {
             let currentTime = period.start_time;
             const endTime = period.end_time;
-            
+
             while (currentTime < endTime) {
                 if (!bookedTimes.has(currentTime)) {
                     slots.push({
@@ -636,24 +607,27 @@ app.get('/api/availability/slots', async (req, res) => {
                         available: true
                     });
                 }
-                
+
                 // Ajouter la durée du créneau
                 const [hours, minutes, seconds] = currentTime.split(':');
                 const slotDate = new Date();
                 slotDate.setHours(parseInt(hours));
-                slotDate.setMinutes(parseInt(minutes) + period.slot_duration);
-                slotDate.setSeconds(parseInt(seconds |
+                slotDate.setMinutes(parseInt(minutes) + (period.slot_duration || 30)); // par défaut 30 min
+                slotDate.setSeconds(parseInt(seconds || 0));
 
-| 0));
-                
-                // Formater l'heure pour la prochaine itération (HH:MM:SS)
+                // Formater pour la prochaine itération (HH:MM:SS)
                 currentTime = `${String(slotDate.getHours()).padStart(2, '0')}:${String(slotDate.getMinutes()).padStart(2, '0')}:${String(slotDate.getSeconds()).padStart(2, '0')}`;
+
+                // Sécurité : éviter boucle infinie
+                if (!period.slot_duration || period.slot_duration <= 0) break;
             }
         }
 
+        // ✅ Retour final
         res.json({ slots });
+
     } catch (error) {
-        console.error('Erreur récupération créneaux:', error);
+        console.error('❌ Erreur récupération créneaux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -661,7 +635,6 @@ app.get('/api/availability/slots', async (req, res) => {
 // ==================
 // DÉMARRAGE DU SERVEUR
 // ==================
-
 app.listen(PORT, () => {
     console.log(`✅ Serveur AI Réceptionniste démarré sur le port ${PORT}`);
     console.log(`📡 API disponible à: http://localhost:${PORT}/api`);
